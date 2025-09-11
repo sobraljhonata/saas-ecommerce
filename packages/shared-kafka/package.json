@@ -10,6 +10,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@types/node": "^20.14.10",
     "kafkajs": "^2.2.4"
   },
   "devDependencies": {
