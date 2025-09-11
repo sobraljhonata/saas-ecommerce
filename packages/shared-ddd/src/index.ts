@@ -1,0 +1,19 @@
+export type Result<T, E = Error> = { ok: true; value: T } | { ok: false; error: E };
+
+export function ok<T>(value: T): Result<T> { return { ok: true, value }; }
+export function err<E extends Error>(error: E): Result<never, E> { return { ok: false, error }; }
+
+export abstract class DomainEvent {
+  readonly occurredAt = new Date();
+  abstract type: string;
+}
+
+export interface OutboxRecord {
+  id: string;
+  aggregate: string;
+  aggregateId: string;
+  type: string;
+  payload: unknown;
+  status: "PENDING" | "PUBLISHED" | "FAILED";
+  createdAt: Date;
+}

@@ -1,0 +1,15 @@
+{
+  "name": "@saas/shared-ddd",
+  "version": "0.1.0",
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "tsc -w -b",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "typescript": "^5.6.2"
+  }
+}

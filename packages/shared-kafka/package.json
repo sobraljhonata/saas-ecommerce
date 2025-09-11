@@ -1,0 +1,18 @@
+{
+  "name": "@saas/shared-kafka",
+  "version": "0.1.0",
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "tsc -w -b",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "kafkajs": "^2.2.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.2"
+  }
+}
