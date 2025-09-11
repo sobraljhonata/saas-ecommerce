@@ -12,23 +12,22 @@ Stack:
 ## Quickstart
 
 ```bash
+# 1) Instale turbo e deps
 pnpm i -g turbo
 pnpm i
 
-# Start MySQL and Kafka locally
-docker compose up -d mysql zookeeper kafka
+# 2) Suba MySQL + Kafka
+docker compose -f infra/docker-compose.yml up -d mysql zookeeper kafka
 
-# Generate Prisma client for Catalog service
+# 3) Configure env do svc-catalog
+cp apps/svc-catalog/.env.example apps/svc-catalog/.env
+
+# 4) Prisma (gerar client e migrar)
 pnpm -F svc-catalog prisma:generate
-
-# Migrate DB
 pnpm -F svc-catalog prisma:migrate
 
-# Dev
+# 5) Dev do svc-catalog
 pnpm -F svc-catalog dev
-
-# Test
-pnpm -F svc-catalog test
 ```
 
 Services included now:
