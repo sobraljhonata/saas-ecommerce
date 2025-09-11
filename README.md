@@ -22,6 +22,10 @@ docker compose -f infra/docker-compose.yml up -d mysql zookeeper kafka
 # 3) Configure env do svc-catalog
 cp apps/svc-catalog/.env.example apps/svc-catalog/.env
 
+# garantir versões de prisma alinhadas no service
+pnpm -F svc-catalog add -D prisma@5.18.0
+pnpm -F svc-catalog add @prisma/client@5.18.0
+
 # 4) Prisma (gerar client e migrar)
 pnpm -F svc-catalog prisma:generate
 pnpm -F svc-catalog prisma:migrate
