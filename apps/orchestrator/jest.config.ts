@@ -6,6 +6,7 @@ const config: Config = {
   roots: ['<rootDir>/test'],
   moduleNameMapper: {
     '^@saas/(.*)$': '<rootDir>/../../packages/$1/src'
-  }
+  },
+  transformIgnorePatterns: ['/node_modules/(?!kafkajs)']
 };
 export default config;

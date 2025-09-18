@@ -49,4 +49,22 @@ Services included now:
 Next steps:
 - Implement orchestrator, discounts, customers, orders, sales, CMS, social.
 ```
+```bash
+curl -X POST http://localhost:3002/orders \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code":"PED9001",
+    "tenantId":"22222222-2222-2222-2222-222222222222",
+    "items":[{"productId":"11111111-1111-1111-1111-111111111111","quantity":2,"unitPrice":50,"total":100}]
+  }'
 
+```
+
+```bash
+docker exec -it $(docker ps -qf "ancestor=mongo:7") mongosh saas --quiet \
+  --eval 'db.order_history.find().sort({_id:-1}).limit(1).pretty()'
+```
+
+pnpm dev:all para subir orchestrator + order + inventory + (payment + shipping).
+
+pnpm kafka:topics para listar/inspecionar tópicos com kcat
