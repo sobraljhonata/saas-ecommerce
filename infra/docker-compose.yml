@@ -34,3 +34,11 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
+# infra/docker-compose.yml (acrescente)
+  mongo:
+    image: mongo:7
+    ports: ["27017:27017"]
+
+  redis:
+    image: redis:7
+    ports: ["6379:6379"]

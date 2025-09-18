@@ -18,6 +18,15 @@ pnpm i
 
 # 2) Suba MySQL + Kafka
 docker compose -f infra/docker-compose.yml up -d mysql zookeeper kafka
+docker compose -f infra/docker-compose.yml up -d zookeeper kafka mysql mongo
+
+pnpm -F orchestrator dev
+pnpm -F svc-order dev
+pnpm -F svc-inventory dev
+
+rm -rf apps/svc-order/src/generated
+pnpm -F svc-order prisma:generate
+pnpm -F svc-order build
 
 # 3) Configure env do svc-catalog
 cp apps/svc-catalog/.env.example apps/svc-catalog/.env
