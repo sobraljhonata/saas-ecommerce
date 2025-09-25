@@ -1,14 +1,19 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { createKafka, Topics } from '@saas/shared-kafka';
+import { createKafka, Topics, BusEnvelope } from '@saas/shared-kafka';
 import { loadEnv } from '@saas/shared-config';
+import type { Consumer, EachMessagePayload } from 'kafkajs';
 import { KafkaProducerService } from './kafka.producer';
+import { ShippingService } from '../shipping/shipping.service';
 
 @Injectable()
 export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(KafkaConsumerService.name);
-  private consumer: import('kafkajs').Consumer | null = null;
+  private consumer!: Consumer;
 
-  constructor(private readonly producer: KafkaProducerService) {}
+  constructor(
+    private readonly producer: KafkaProducerService,
+    private readonly shipping: ShippingService,
+  ) {}
 
   async onModuleInit() {
     const { KAFKA_BROKERS } = loadEnv();
@@ -18,32 +23,32 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
     await this.consumer.subscribe({ topic: Topics.ShippingCommands.Prepare, fromBeginning: false });
 
     await this.consumer.run({
-      eachMessage: async ({ message }) => {
+      eachMessage: async ({ topic, message }: EachMessagePayload) => {
         const raw = message.value?.toString();
         if (!raw) return;
-        const cmd = JSON.parse(raw);
-        this.logger.log(`Prepare command: ${raw}`);
+        const env = JSON.parse(raw) as BusEnvelope<any>;
+        const { orderId } = env.payload || {};
+        if (!orderId) return;
 
-        await this.producer.send(Topics.ShippingEvents.Prepared, [{
-          key: cmd.orderId,
+        const ok = this.shipping.prepare();
+        const outTopic = ok ? Topics.ShippingEvents.Prepared : Topics.ShippingEvents.Failed;
+        const type = ok ? 'ShippingPrepared' : 'ShippingFailed';
+
+        await this.producer.send(outTopic, [{
+          key: orderId,
           value: JSON.stringify({
-            type: 'ShippingPrepared',
-            aggregate: 'Shipping',
-            aggregateId: cmd.orderId,
-            payload: { orderId: cmd.orderId },
+            type, aggregate: 'Shipping', aggregateId: orderId,
+            payload: { orderId },
             createdAt: new Date().toISOString(),
           }),
         }]);
-      },
+      }
     });
 
     this.logger.log('Shipping consumer started');
   }
 
   async onModuleDestroy() {
-    if (this.consumer) {
-      await this.consumer.disconnect();
-      this.consumer = null;
-    }
+    if (this.consumer) await this.consumer.disconnect();
   }
 }
