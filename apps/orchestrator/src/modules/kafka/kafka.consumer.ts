@@ -16,18 +16,18 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
     const { KAFKA_BROKERS } = loadEnv();
     const kafka = createKafka(KAFKA_BROKERS);
-    this.consumer = kafka.consumer({ groupId: 'orchestrator' });
-    await this.consumer.connect();
+    const consumer = (this.consumer = kafka.consumer({ groupId: 'orchestrator' }));
+    await consumer.connect();
 
-    await this.consumer.subscribe({ topic: Topics.Outbox, fromBeginning: false });
-    await this.consumer.subscribe({ topic: Topics.InventoryEvents.Reserved, fromBeginning: false });
-    await this.consumer.subscribe({ topic: Topics.InventoryEvents.Failed, fromBeginning: false });
-    await this.consumer.subscribe({ topic: Topics.PaymentEvents.Authorized, fromBeginning: false });
-    await this.consumer.subscribe({ topic: Topics.PaymentEvents.Failed, fromBeginning: false });
-    await this.consumer.subscribe({ topic: Topics.ShippingEvents.Prepared, fromBeginning: false });
-    await this.consumer.subscribe({ topic: Topics.ShippingEvents.Failed, fromBeginning: false });
+    await consumer.subscribe({ topic: Topics.Outbox, fromBeginning: false });
+    await consumer.subscribe({ topic: Topics.InventoryEvents.Reserved, fromBeginning: false });
+    await consumer.subscribe({ topic: Topics.InventoryEvents.Failed, fromBeginning: false });
+    await consumer.subscribe({ topic: Topics.PaymentEvents.Authorized, fromBeginning: false });
+    await consumer.subscribe({ topic: Topics.PaymentEvents.Failed, fromBeginning: false });
+    await consumer.subscribe({ topic: Topics.ShippingEvents.Prepared, fromBeginning: false });
+    await consumer.subscribe({ topic: Topics.ShippingEvents.Failed, fromBeginning: false });
 
-    await this.consumer.run({
+    await consumer.run({
       eachMessage: async ({ topic, message }: EachMessagePayload) => {
         try {
           const v = message.value?.toString();
@@ -50,8 +50,9 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleDestroy() {
-    if (this.consumer) {
-      await this.consumer.disconnect();
+    const consumer = this.consumer;
+    if (consumer) {
+      await consumer.disconnect();
       this.consumer = null;
     }
   }

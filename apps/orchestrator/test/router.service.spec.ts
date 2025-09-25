@@ -1,5 +1,4 @@
 import { RouterService } from '../src/modules/router/router.service';
-jest.mock('@saas/shared-kafka');
 
 it('OrderPlaced → envia Inventory.Reserve e grava timeline', async () => {
   const producer = { send: jest.fn() } as any;
