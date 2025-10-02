@@ -1,7 +1,7 @@
 import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
-import { BusEnvelope, Topics } from '@saas/shared-kafka';
 import { KafkaProducerService } from '../kafka/kafka.producer';
 import { MongoService } from '../db/mongo.service';
+import { BusEnvelope, Topics } from '@saas/shared-kafka';
 import type { Document, Filter, UpdateFilter } from 'mongodb';
 import { IdempotencyService } from '../idempotency/idempotency.service';
 
@@ -21,155 +21,202 @@ export class RouterService {
     return this.idem.setOnce(`saga:step:${orderId}:${step}`, ttl);
   }
 
+  private async appendStage(orderId: string, stage: string, payload: unknown) {
+    const col = this.mongo.getCollection<{ orderId: string; stages: { stage: string; at: string; payload: unknown }[] }>('order_history');
+    await col.updateOne(
+      { orderId },
+      {
+        $setOnInsert: { orderId, stages: [] },
+        $push: { stages: { stage, at: new Date().toISOString(), payload } },
+      },
+      { upsert: true },
+    );
+  }
+
+  private calcAmount(items: any[]): number {
+    return (items || []).reduce((acc, it) => acc + (it?.total ?? (it?.unitPrice ?? 0) * (it?.quantity ?? 0)), 0);
+  }
+
   async route(msg: BusEnvelope<any>) {
     const type = msg.type;
-    const payload: any = msg.payload || {};
-    const orderId = payload.orderId ?? msg.aggregateId;
+    const orderId =
+      (msg.payload as any)?.orderId ??
+      msg.aggregateId; // OrderPlaced costuma vir com aggregateId = orderId
+    const items =
+      (msg.payload as any)?.items ??
+      (msg as any)?.items ??
+      [];
+
+    await this.appendStage(orderId, msg.type ?? 'Unknown', msg.payload);
 
     switch (type) {
       case 'OrderPlaced': {
+        // 🔹 PRIMEIRA ETAPA DA SAGA: solicitar reserva de estoque
         if (!(await this.guardStep(orderId, 'Inventory.Reserve'))) return;
-        await this.producer.send(Topics.InventoryCommands.Reserve, [{
-          key: orderId,
-          value: JSON.stringify({
-            type: 'ReserveInventory',
-            aggregate: 'Inventory',
-            aggregateId: orderId,
-            payload: { orderId, items: payload.items },
-            createdAt: new Date().toISOString(),
-          }),
-        }]);
-        await this.pushTimeline(orderId, 'OrderPlaced', payload);
+        let value = JSON.stringify({
+          type: 'ReserveInventory',
+          aggregate: 'Inventory',
+          aggregateId: orderId,
+          orderId,
+          items,
+          createdAt: new Date().toISOString(),
+        })
+        await this.producer.send(Topics.InventoryCommands.Reserve, [
+          {
+            key: orderId,
+            value
+          }
+        ]);
+        await this.pushTimeline(orderId, 'OrderPlaced', value);
+        this.logger.log(`→ ReserveInventory orderId=${orderId}`);
         break;
       }
 
       case 'InventoryReserved': {
         if (!(await this.guardStep(orderId, 'Payment.Authorize'))) return;
-        const amount = (payload.items ?? []).reduce((acc: number, it: any) => {
-          const itemTotal = it?.total ?? ((it?.unitPrice ?? 0) * (it?.quantity ?? 0));
-          return acc + Number(itemTotal);
-        }, 0);
-
+        const amount = this.calcAmount(items)
+        let value = JSON.stringify({
+          type: 'AuthorizePayment',
+          aggregate: 'Payment',
+          aggregateId: orderId,
+          orderId,
+          amount,
+          createdAt: new Date().toISOString(),
+        })
         await this.producer.send(Topics.PaymentCommands.Authorize, [{
           key: orderId,
-          value: JSON.stringify({
-            type: 'AuthorizePayment',
-            aggregate: 'Payment',
-            aggregateId: orderId,
-            payload: { orderId, amount },
-            createdAt: new Date().toISOString(),
-          }),
+          value,
         }]);
-        await this.pushTimeline(orderId, 'InventoryReserved', payload);
+        await this.pushTimeline(orderId, 'InventoryReserved', value);
+        this.logger.log(`→ AuthorizePayment orderId=${orderId} amount=${amount}`);
         break;
       }
 
       case 'PaymentAuthorized': {
         if (!(await this.guardStep(orderId, 'Shipping.Prepare'))) return;
+        let value = JSON.stringify({
+          type: 'PrepareShipping',
+          aggregate: 'Shipping',
+          aggregateId: orderId,
+          orderId,
+          items,
+          createdAt: new Date().toISOString(),
+        })
         await this.producer.send(Topics.ShippingCommands.Prepare, [{
           key: orderId,
-          value: JSON.stringify({
-            type: 'PrepareShipping',
-            aggregate: 'Shipping',
-            aggregateId: orderId,
-            payload: { orderId },
-            createdAt: new Date().toISOString(),
-          }),
+          value,
         }]);
-        await this.pushTimeline(orderId, 'PaymentAuthorized', payload);
+        this.logger.log(`→ PrepareShipping orderId=${orderId}`);
+        await this.pushTimeline(orderId, 'PaymentAuthorized', value);
         break;
       }
 
       case 'ShippingPrepared': {
         if (!(await this.guardStep(orderId, 'Order.Confirm'))) return;
+        let value = JSON.stringify({
+          type: 'ConfirmOrder',
+          aggregate: 'Order',
+          aggregateId: orderId,
+          orderId,
+          createdAt: new Date().toISOString(),
+        })
         await this.producer.send(Topics.OrderCommands.Confirm, [{
           key: orderId,
-          value: JSON.stringify({
-            type: 'ConfirmOrder',
-            aggregate: 'Order',
-            aggregateId: orderId,
-            payload: { orderId },
-            createdAt: new Date().toISOString(),
-          }),
+          value,
         }]);
-        await this.pushTimeline(orderId, 'ShippingPrepared', payload);
+        this.logger.log(`→ OrderConfirmed orderId=${orderId}`);
+        await this.pushTimeline(orderId, 'ShippingPrepared', value);
         break;
       }
 
       // -------- Compensações --------
       case 'InventoryReservationFailed': {
         if (!(await this.guardStep(orderId, 'Order.Fail'))) return;
+        let value = JSON.stringify({
+          type: 'OrderFailed',
+          aggregate: 'Order',
+          aggregateId: orderId,
+          orderId,
+          reason: 'InventoryReservationFailed',
+          createdAt: new Date().toISOString(),
+        })
         await this.producer.send(Topics.OrderEvents.Failed, [{
           key: orderId,
-          value: JSON.stringify({
-            type: 'OrderFailed',
-            aggregate: 'Order',
-            aggregateId: orderId,
-            payload: { orderId, reason: 'InventoryReservationFailed' },
-            createdAt: new Date().toISOString(),
-          }),
+          value,
         }]);
-        await this.pushTimeline(orderId, 'InventoryReservationFailed', payload);
+        this.logger.log(`→ OrderFailed (inventory) orderId=${orderId}`);
+        await this.pushTimeline(orderId, 'InventoryReservationFailed', value);
         break;
       }
 
       case 'PaymentFailed': {
         // compensação: solta estoque + marca pedido como falho
+        let value = JSON.stringify({})
         if (await this.guardStep(orderId, 'Inventory.Release')) {
+          value = JSON.stringify({
+            type: 'ReleaseInventory',
+            aggregate: 'Inventory',
+            aggregateId: orderId,
+            orderId,
+            items,
+            createdAt: new Date().toISOString(),
+          })
           await this.producer.send(Topics.InventoryCommands.Release, [{
             key: orderId,
-            value: JSON.stringify({
-              type: 'ReleaseInventory',
-              aggregate: 'Inventory',
-              aggregateId: orderId,
-              payload: { orderId, items: payload.items },
-              createdAt: new Date().toISOString(),
-            }),
+            value,
           }]);
         }
         if (await this.guardStep(orderId, 'Order.Fail')) {
+          value = JSON.stringify({
+            type: 'OrderFailed',
+            aggregate: 'Order',
+            aggregateId: orderId,
+            orderId, 
+            reason: 'PaymentFailed',
+            createdAt: new Date().toISOString(),
+          })
           await this.producer.send(Topics.OrderEvents.Failed, [{
             key: orderId,
-            value: JSON.stringify({
-              type: 'OrderFailed',
-              aggregate: 'Order',
-              aggregateId: orderId,
-              payload: { orderId, reason: 'PaymentFailed' },
-              createdAt: new Date().toISOString(),
-            }),
+            value,
           }]);
         }
-        await this.pushTimeline(orderId, 'PaymentFailed', payload);
+        this.logger.log(`→ ReleaseInventory + OrderFailed (payment) orderId=${orderId}`);
+        await this.pushTimeline(orderId, 'PaymentFailed', value);
         break;
       }
 
       case 'ShippingFailed': {
         // compensação: reembolsa pagamento + marca pedido como falho
+        let value = JSON.stringify({})
         if (await this.guardStep(orderId, 'Payment.Refund')) {
+          value = JSON.stringify({
+            type: 'RefundPayment',
+            aggregate: 'Payment',
+            aggregateId: orderId,
+            orderId,
+            createdAt: new Date().toISOString(),
+          })
           await this.producer.send(Topics.PaymentCommands.Refund, [{
             key: orderId,
-            value: JSON.stringify({
-              type: 'RefundPayment',
-              aggregate: 'Payment',
-              aggregateId: orderId,
-              payload: { orderId },
-              createdAt: new Date().toISOString(),
-            }),
+            value,
           }]);
         }
         if (await this.guardStep(orderId, 'Order.Fail')) {
+          value = JSON.stringify({
+            type: 'OrderFailed',
+            aggregate: 'Order',
+            aggregateId: orderId,
+            orderId, 
+            reason: 'ShippingFailed',
+            createdAt: new Date().toISOString(),
+          })
           await this.producer.send(Topics.OrderEvents.Failed, [{
             key: orderId,
-            value: JSON.stringify({
-              type: 'OrderFailed',
-              aggregate: 'Order',
-              aggregateId: orderId,
-              payload: { orderId, reason: 'ShippingFailed' },
-              createdAt: new Date().toISOString(),
-            }),
+            value,
           }]);
         }
-        await this.pushTimeline(orderId, 'ShippingFailed', payload);
+        this.logger.log(`→ Refund + OrderFailed (shipping) orderId=${orderId}`);
+        await this.pushTimeline(orderId, 'ShippingFailed', value);
         break;
       }
 

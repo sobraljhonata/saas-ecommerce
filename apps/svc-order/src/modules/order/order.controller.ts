@@ -1,7 +1,7 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { CommandBus } from '@nestjs/cqrs';
+import { CreateOrderDto, CreateOrderSchema } from './order.dto';
 import { CreateOrderCommand } from './usecases/create-order.handler';
-import { CreateOrderDto } from './order.dto';
 
 @Controller('orders')
 export class OrderController {
@@ -9,7 +9,9 @@ export class OrderController {
 
   @Post()
   async create(@Body() body: unknown) {
-    const dto = CreateOrderDto.parse(body);
+    // valida e tipa:
+    console.log(body)
+    const dto = CreateOrderSchema.parse(body) satisfies CreateOrderDto;
     const id = await this.commandBus.execute(new CreateOrderCommand(dto));
     return { id, code: dto.code };
   }

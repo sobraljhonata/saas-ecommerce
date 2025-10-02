@@ -21,17 +21,20 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
     await this.consumer.run({
       eachMessage: async ({ message }: EachMessagePayload) => {
         const raw = message.value?.toString();
-        if (!raw) return;
-        const cmd = JSON.parse(raw);
-        this.logger.log(`Reserve command: ${raw}`);
+        const input = JSON.parse(raw || '{}');
+        const orderId = input.orderId ?? input.payload?.orderId;
+        const items = input.items ?? input.payload?.items ?? [];
+        if (!orderId) return;
+        this.logger.log(`Reserve command: ${input}`);
 
         await this.producer.send(Topics.InventoryEvents.Reserved, [{
-          key: cmd.orderId,
+          key: orderId,
           value: JSON.stringify({
             type: 'InventoryReserved',
             aggregate: 'Inventory',
-            aggregateId: cmd.orderId,
-            payload: { orderId: cmd.orderId, items: cmd.items },
+            aggregateId: orderId,
+            orderId,
+            items,
             createdAt: new Date().toISOString()
           })
         }]);

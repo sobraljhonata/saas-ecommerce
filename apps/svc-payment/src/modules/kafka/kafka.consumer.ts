@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { createKafka, Topics, BusEnvelope } from '@saas/shared-kafka';
 import { loadEnv } from '@saas/shared-config';
 import type { Consumer, EachMessagePayload } from 'kafkajs';
@@ -12,7 +12,7 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     private readonly producer: KafkaProducerService,
-    private readonly payment: PaymentService
+    @Inject(forwardRef(() => PaymentService)) private readonly payment: PaymentService, // 👈
   ) {}
 
   async onModuleInit() {
@@ -28,9 +28,9 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
     await this.consumer.run({
       eachMessage: async ({ topic, message }: EachMessagePayload) => {
         const raw = message.value?.toString();
-        if (!raw) return;
-        const env = JSON.parse(raw) as BusEnvelope<any>;
-        const { orderId, amount } = env.payload || {};
+        const input = JSON.parse(raw || '{}');
+        const orderId = input.orderId ?? input.payload?.orderId;
+        const amount = input.amount ?? input.amount ?? 0;
         if (!orderId) return;
 
         if (topic === Topics.PaymentCommands.Authorize) {
@@ -41,8 +41,11 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
           await this.producer.send(outTopic, [{
             key: orderId,
             value: JSON.stringify({
-              type, aggregate: 'Payment', aggregateId: orderId,
-              payload: { orderId, amount },
+              type, 
+              aggregate: 'Payment', 
+              aggregateId: orderId,
+              orderId, 
+              amount,
               createdAt: new Date().toISOString(),
             }),
           }]);
@@ -55,7 +58,7 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
               type: 'PaymentRefunded',
               aggregate: 'Payment',
               aggregateId: orderId,
-              payload: { orderId },
+              orderId,
               createdAt: new Date().toISOString(),
             }),
           }]);

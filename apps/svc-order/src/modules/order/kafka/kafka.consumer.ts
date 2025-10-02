@@ -21,9 +21,9 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
     await this.consumer.run({
       eachMessage: async ({ message }) => {
         const raw = message.value?.toString();
-        if (!raw) return;
-        const cmd = JSON.parse(raw);
-        const orderId = cmd.orderId;
+        const input = JSON.parse(raw || '{}');
+        const orderId = input.orderId ?? input.payload?.orderId;
+        if (!orderId) return;
         this.logger.log(`Confirm command: ${raw}`);
         await this.repo.updateStatus(orderId, 'CONFIRMED');
         await this.producer.send(Topics.OrderEvents.Confirmed, [{
@@ -32,7 +32,7 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
             type: 'OrderConfirmed',
             aggregate: 'Order',
             aggregateId: orderId,
-            payload: { orderId },
+            orderId,
             createdAt: new Date().toISOString(),
           }),
         }]);

@@ -1,9 +1,10 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { PaymentService } from './payment.service';
-import { KafkaProducerService } from '../kafka/kafka.producer';
-import { KafkaConsumerService } from '../kafka/kafka.consumer';
+import { KafkaModule } from '../kafka/kafka.module';
 
 @Module({
-  providers: [PaymentService, KafkaProducerService, KafkaConsumerService],
+  imports: [forwardRef(() => KafkaModule)],   // permite a referência circular
+  providers: [PaymentService],
+  exports: [PaymentService], 
 })
 export class PaymentModule {}

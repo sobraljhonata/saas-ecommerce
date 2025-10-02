@@ -1,14 +1,11 @@
-import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { randomUUID } from 'node:crypto';
+import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
+import type { CreateOrderDto } from '../order.dto';
 import { OrderRepository } from '../order.repository';
 import { OutboxRepository } from '../outbox.repository';
 
 export class CreateOrderCommand {
-  constructor(public readonly dto: {
-    code: string;
-    items: { productId: string; quantity: number; unitPrice: number; total: number }[];
-    tenantId: string;
-  }) {}
+  constructor(public readonly dto: CreateOrderDto) {}
 }
 
 @CommandHandler(CreateOrderCommand)
@@ -17,9 +14,18 @@ export class CreateOrderHandler implements ICommandHandler<CreateOrderCommand, s
 
   async execute(command: CreateOrderCommand): Promise<string> {
     const id = randomUUID();
-    const items = command.dto.items.map(i => ({
+    const items: Array<{
+      id: string;
+      productId: string;
+      quantity: number;
+      unitPrice: number;
+      total: number;
+    }> = command.dto.items.map(it => ({
       id: randomUUID(),
-      ...i
+      productId: it.productId,
+      quantity: it.quantity,
+      unitPrice: it.unitPrice,
+      total: it.total
     }));
     await this.repo.create({ id, code: command.dto.code, tenantId: command.dto.tenantId, items });
     await this.outbox.enqueue({

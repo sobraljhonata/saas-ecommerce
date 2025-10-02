@@ -1,14 +1,10 @@
-generator client {
-  provider = "prisma-client-js"
-  output   = "../generated/client"
-}
+# 7. Dados & Persistência
 
-datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
-  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
-}
-
+## MySQL (Prisma)
+- `DATABASE_URL=mysql://app:app@.../saas_ecommerce`
+- Migrações com `prisma migrate deploy`
+- **Exemplo de schema (catálogo)**:
+```prisma
 model Product {
   id               String   @id @default(uuid())
   name             String
