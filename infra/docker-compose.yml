@@ -6,6 +6,9 @@ services:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
     ports: ["2181:2181"]
+    volumes:
+        - zookeeper_data:/var/lib/zookeeper/data
+        - zookeeper_log:/var/lib/zookeeper/log
 
   kafka:
     image: confluentinc/cp-kafka:7.6.1
@@ -14,21 +17,28 @@ services:
       - "9092:9092"    # interno (rede Docker) - uso entre containers
       - "29092:29092"  # externo (host) - uso de apps rodando no host
     environment:
-      KAFKA_BROKER_ID: 1
+      KAFKA_BROKER_ID: 2
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-
+    volumes:
+      - kafka_data:/var/lib/kafka/data
 
   mysql:
     image: mysql:8.3
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: catalog
+      - MYSQL_ROOT_PASSWORD=dev
+      - MYSQL_DATABASE=saas_ecommerce
+      - MYSQL_USER=app
+      - MYSQL_PASSWORD=app
     ports: ["3306:3306"]
+    command: ["--default-authentication-plugin=mysql_native_password"]
+    volumes:
+      - mysql_data:/var/lib/mysql\
+      - ./mysql-init:/docker-entrypoint-initdb.d:ro   # 👈 aqui (caminho relativo à pasta infra/)
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 5s
@@ -38,7 +48,20 @@ services:
   mongo:
     image: mongo:7
     ports: ["27017:27017"]
+    volumes:
+      - mongo_data:/data/db
 
   redis:
     image: redis:7
+    command: ["redis-server", "--appendonly", "yes"]
     ports: ["6379:6379"]
+    volumes:
+      - redis_data:/data
+
+volumes:
+  zookeeper_data:
+  zookeeper_log:
+  kafka_data:
+  redis_data:
+  mongo_data:
+  mysql_data:

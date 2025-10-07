@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["jest", "node"],
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@saas/shared-kafka": ["test/stubs/shared-kafka.ts"],   // 👈 prioridade ao stub
+      "@saas/shared-kafka/testing": ["test/stubs/shared-kafka.ts"],
+      "@saas/*": ["../../packages/*/src"]                     // fallback p/ demais pacotes
+    }
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"]
+}

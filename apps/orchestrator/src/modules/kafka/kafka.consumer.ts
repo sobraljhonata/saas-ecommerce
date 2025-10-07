@@ -3,6 +3,8 @@ import { createKafka, Topics, BusEnvelope } from '@saas/shared-kafka';
 import { loadEnv } from '@saas/shared-config';
 import { RouterService } from '../router/router.service';
 import type { Consumer, EachMessagePayload } from 'kafkajs';
+import { IdempotencyService } from '../idempotency/idempotency.service';
+import { createHash } from 'crypto';
 
 @Injectable()
 export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
@@ -11,7 +13,9 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     @Inject(forwardRef(() => RouterService)) 
-    private readonly router: RouterService) {}
+    private readonly router: RouterService,
+    private readonly idem: IdempotencyService
+  ) {}
 
   async onModuleInit() {
     const { KAFKA_BROKERS } = loadEnv();
@@ -33,6 +37,10 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
           const v = message.value?.toString();
           if (!v) return;
           const env = JSON.parse(v) as BusEnvelope;
+          // idempotência por messageId (ou hash do payload)
+          const msgKey = env.messageId ?? createHash('sha256').update(v).digest('hex');
+          const seen = await this.idem.setOnce(`saga:msg:${msgKey}`, 300);
+          if (!seen) return;
 
           if (topic === Topics.InventoryEvents.Reserved && !env.type) env.type = 'InventoryReserved';
           if (topic === Topics.InventoryEvents.Failed && !env.type) env.type = 'InventoryReservationFailed';

@@ -1,0 +1,1 @@
+{"version":3,"file":"shipping.service.spec.js","sourceRoot":"","sources":["shipping.service.spec.ts"],"names":[],"mappings":";;AAAA,+EAA2E;AAE3E,QAAQ,CAAC,iBAAiB,EAAE,GAAG,EAAE;IAC/B,EAAE,CAAC,iCAAiC,EAAE,GAAG,EAAE;QACzC,MAAM,GAAG,GAAG,IAAI,kCAAe,EAAE,CAAC;QAClC,MAAM,CAAC,GAAG,CAAC,OAAO,EAAE,CAAC,CAAC,IAAI,CAAC,IAAI,CAAC,CAAC;IACnC,CAAC,CAAC,CAAC;AACL,CAAC,CAAC,CAAC"}

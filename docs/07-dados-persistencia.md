@@ -1,0 +1,30 @@
+# 7. Dados & Persistência
+
+## MySQL (Prisma)
+- `DATABASE_URL=mysql://app:app@.../saas_ecommerce`
+- Migrações com `prisma migrate deploy`
+- **Exemplo de schema (catálogo)**:
+```prisma
+model Product {
+  id               String   @id @default(uuid())
+  name             String
+  description      String?
+  imageUrl         String?
+  price            Float
+  isBundleOptional Boolean  @default(false)
+  status           Boolean  @default(true)
+  categoryId       String
+  tenantId         String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Outbox {
+  id          String   @id @default(uuid())
+  aggregate   String
+  aggregateId String
+  type        String
+  payload     Json
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+}

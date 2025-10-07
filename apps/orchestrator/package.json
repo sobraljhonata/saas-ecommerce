@@ -17,6 +17,7 @@
     "@nestjs/schedule": "^4.1.0",
     "@saas/shared-config": "workspace:*",
     "@saas/shared-kafka": "workspace:*",
+    "ioredis": "^5.8.0",
     "mongodb": "^6.19.0",
     "reflect-metadata": "^0.1.14",
     "rxjs": "^7.8.1"

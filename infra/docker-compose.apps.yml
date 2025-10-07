@@ -1,0 +1,94 @@
+version: "3.9"
+
+# Executar com:
+#   docker compose -f infra/docker-compose.infra.yml -f infra/docker-compose.apps.yml up -d --build
+
+services:
+  topics-init:
+    image: node:20-alpine
+    depends_on:
+      - kafka
+    environment:
+      - KAFKA_BROKERS=kafka:9092
+    working_dir: /app
+    volumes:
+      - ./scripts:/app/scripts:ro  # ← resolve para infra/scripts
+    command: ["node", "scripts/init-kafka-topics.js"]
+    restart: "no"
+
+  prisma-migrate:
+    build:
+      context: ..                           # ← raiz do repo
+      dockerfile: infra/Dockerfile.saas-service  # ← caminho relativo ao context
+      args: { APP_NAME: orchestrator }
+    depends_on:
+      - mysql
+    environment:
+      - DATABASE_URL=mysql://app:app@mysql:3306/saas_ecommerce
+    command: [ "sh", "-lc", "pnpm -r --filter svc-catalog exec -- prisma migrate deploy && pnpm -r --filter svc-order exec -- prisma migrate deploy || true" ]
+    restart: "no"
+
+  orchestrator:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.saas-service
+      args: { APP_NAME: orchestrator }
+    depends_on:
+      - kafka
+      - mongo
+      - redis
+      - prisma-migrate
+      - topics-init
+    environment:
+      - NODE_ENV=production
+      - KAFKA_BROKERS=kafka:9092
+      - MONGO_URL=mongodb://mongo:27017
+      - MONGO_DB=orchestrator
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=mysql://app:app@mysql:3306/saas_ecommerce
+    # ports:
+    #   - "3010:3000"
+
+  svc-order:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.saas-service
+      args: { APP_NAME: svc-order }
+    depends_on: [kafka, mysql, prisma-migrate, topics-init]
+    environment:
+      - NODE_ENV=production
+      - KAFKA_BROKERS=kafka:9092
+      - DATABASE_URL=mysql://app:_
+  
+  svc-inventory:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.saas-service
+      args: { APP_NAME: svc-inventory }
+    depends_on: [kafka, mysql, prisma-migrate, topics-init]
+    environment:
+      - NODE_ENV=production
+      - KAFKA_BROKERS=kafka:9092
+      - DATABASE_URL=mysql://app:_
+
+  svc-payment:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.saas-service
+      args: { APP_NAME: svc-payment }
+    depends_on: [kafka, mysql, prisma-migrate, topics-init]
+    environment:
+      - NODE_ENV=production
+      - KAFKA_BROKERS=kafka:9092
+      - DATABASE_URL=mysql://app:_
+
+  svc-shipping:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.saas-service
+      args: { APP_NAME: svc-shipping }
+    depends_on: [kafka, mysql, prisma-migrate, topics-init]
+    environment:
+      - NODE_ENV=production
+      - KAFKA_BROKERS=kafka:9092
+      - DATABASE_URL=mysql://app:_
