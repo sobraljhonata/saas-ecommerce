@@ -23,11 +23,14 @@ export class RouterService {
 
   private async appendStage(orderId: string, stage: string, payload: unknown) {
     const col = this.mongo.getCollection<{ orderId: string; stages: { stage: string; at: string; payload: unknown }[] }>('order_history');
+    
+    const newStage = { stage, at: new Date().toISOString(), payload }
+    
     await col.updateOne(
       { orderId },
       {
-        $setOnInsert: { orderId, stages: [] },
-        $push: { stages: { stage, at: new Date().toISOString(), payload } },
+        $setOnInsert: { orderId},
+        $push: { stages: newStage },
       },
       { upsert: true },
     );

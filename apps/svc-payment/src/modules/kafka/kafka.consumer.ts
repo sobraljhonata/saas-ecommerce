@@ -23,7 +23,7 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
     await this.consumer.subscribe({ topic: Topics.PaymentCommands.Authorize, fromBeginning: false });
     await this.consumer.subscribe({ topic: Topics.PaymentCommands.Refund, fromBeginning: false });
 
-    const rejectOver = Number(process.env.REJECT_OVER ?? 999999);
+    const rejectOver = Number(process.env.REJECT_OVER ?? '0');
 
     await this.consumer.run({
       eachMessage: async ({ topic, message }: EachMessagePayload) => {
@@ -35,6 +35,7 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
 
         if (topic === Topics.PaymentCommands.Authorize) {
           const ok = this.payment.authorize(Number(amount ?? 0), rejectOver);
+          this.logger.debug(`O pagamento está OK? ${ok}, o valor para rejeitar é ${rejectOver}`)
           const outTopic = ok ? Topics.PaymentEvents.Authorized : Topics.PaymentEvents.Failed;
           const type = ok ? 'PaymentAuthorized' : 'PaymentFailed';
 

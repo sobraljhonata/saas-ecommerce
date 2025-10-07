@@ -6,7 +6,8 @@ export const envSchema = z.object({
   DATABASE_URL: z.string().min(1, "Required").optional(),
   KAFKA_BROKERS: z.string().default("localhost:29092"),
   TENANT_ID: z.string().uuid().optional(),
-  MONGO_URL: z.string().optional()
+  MONGO_URL: z.string().optional(),
+  REJECT_OVER: z.coerce.number().default(0),
 });
 
 export type Env = z.infer<typeof envSchema>;
