@@ -1,6 +1,7 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit, Inject } from '@nestjs/common';
 import { createKafka, Topics } from '@saas/shared-kafka';
-import { loadEnv } from '@saas/shared-config';
+import { CONFIG, type ConfigToken } from '@saas/shared-config';
+import type { InventoryConfig } from '@saas/shared-config';
 import { KafkaProducerService } from './kafka.producer';
 import type { Consumer, EachMessagePayload } from 'kafkajs';
 
@@ -9,11 +10,13 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(KafkaConsumerService.name);
   private consumer: Consumer | null = null;
 
-  constructor(private readonly producer: KafkaProducerService) { }
+  constructor(
+    private readonly producer: KafkaProducerService,
+    @Inject(CONFIG as ConfigToken<InventoryConfig>) private readonly cfg: InventoryConfig,
+  ) {}
 
   async onModuleInit() {
-    const { KAFKA_BROKERS } = loadEnv();
-    const kafka = createKafka(KAFKA_BROKERS);
+    const kafka = createKafka(this.cfg.KAFKA_BROKERS);
     this.consumer = kafka.consumer({ groupId: 'svc-inventory' });
     await this.consumer.connect();
     await this.consumer.subscribe({ topic: Topics.InventoryCommands.Reserve, fromBeginning: false });
@@ -25,7 +28,7 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
         const orderId = input.orderId ?? input.payload?.orderId;
         const items = input.items ?? input.payload?.items ?? [];
         if (!orderId) return;
-        this.logger.log(`Reserve command: ${input}`);
+        this.logger.log(`Reserve command: ${JSON.stringify(input)}`);
 
         await this.producer.send(Topics.InventoryEvents.Reserved, [{
           key: orderId,

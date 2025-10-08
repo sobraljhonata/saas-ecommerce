@@ -1,6 +1,7 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { createKafka, Topics, BusEnvelope } from '@saas/shared-kafka';
-import { loadEnv } from '@saas/shared-config';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit, Inject } from '@nestjs/common';
+import { createKafka, Topics } from '@saas/shared-kafka';
+import { CONFIG, type ConfigToken } from '@saas/shared-config';
+import type { ShippingConfig } from '@saas/shared-config';
 import type { Consumer, EachMessagePayload } from 'kafkajs';
 import { KafkaProducerService } from './kafka.producer';
 
@@ -9,16 +10,18 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(KafkaConsumerService.name);
   private consumer!: Consumer;
 
-  constructor(private readonly producer: KafkaProducerService) {}
+  constructor(
+    private readonly producer: KafkaProducerService,
+    @Inject(CONFIG as ConfigToken<ShippingConfig>) private readonly cfg: ShippingConfig,
+  ) {}
 
   async onModuleInit() {
-    const { KAFKA_BROKERS } = loadEnv();
-    const kafka = createKafka(KAFKA_BROKERS);
-    const consumer = (this.consumer = kafka.consumer({ groupId: 'svc-shipping' }));
-    await consumer.connect();
-    await consumer.subscribe({ topic: Topics.ShippingCommands.Prepare, fromBeginning: false });
+    const kafka = createKafka(this.cfg.KAFKA_BROKERS);
+    this.consumer = kafka.consumer({ groupId: 'svc-shipping' });
+    await this.consumer.connect();
+    await this.consumer.subscribe({ topic: Topics.ShippingCommands.Prepare, fromBeginning: false });
 
-    await consumer.run({
+    await this.consumer.run({
       eachMessage: async ({ topic, message }: EachMessagePayload) => {
         const raw = message.value?.toString();
         const input = JSON.parse(raw || '{}');

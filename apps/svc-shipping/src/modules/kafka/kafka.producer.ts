@@ -1,25 +1,31 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit, Inject } from '@nestjs/common';
 import { createKafka } from '@saas/shared-kafka';
-import { loadEnv } from '@saas/shared-config';
+import { CONFIG, type ConfigToken } from '@saas/shared-config';
+import type { ShippingConfig } from '@saas/shared-config';
 import type { Producer } from 'kafkajs';
 
 @Injectable()
 export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
-  private producer!: Producer;
+  private readonly logger = new Logger(KafkaProducerService.name);
+  private producer: Producer | null = null;
 
+  constructor(@Inject(CONFIG as ConfigToken<ShippingConfig>) private readonly cfg: ShippingConfig) { }
   async onModuleInit() {
-    const { KAFKA_BROKERS } = loadEnv();
-    const kafka = createKafka(KAFKA_BROKERS);
-    const producer = (this.producer = kafka.producer());
-    await producer.connect();
+    const kafka = createKafka(this.cfg.KAFKA_BROKERS);
+    this.producer = kafka.producer();
+    await this.producer.connect();
+    this.logger.log('Kafka producer connected');
   }
 
   async onModuleDestroy() {
-    const producer = this.producer;
-    if (producer) await producer.disconnect();
+    if (this.producer) {
+      await this.producer.disconnect();
+      this.producer = null;
+    }
   }
 
   async send(topic: string, messages: { key?: string; value: string }[]) {
+    if (!this.producer) throw new Error('Kafka producer not initialized');
     const producer = this.producer;
     await producer.send({ topic, messages });
   }

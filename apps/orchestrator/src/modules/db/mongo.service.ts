@@ -1,12 +1,16 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { BaseConfig, CONFIG, ConfigToken, OrchestratorConfig } from '@saas/shared-config';
 import { MongoClient, Collection, Document } from 'mongodb';
 
 @Injectable()
 export class MongoService implements OnModuleInit, OnModuleDestroy {
   private client: MongoClient | null = null;
 
+  constructor(@Inject(CONFIG as ConfigToken<OrchestratorConfig>) private readonly cfg: OrchestratorConfig,
+  ) {}
+
   async onModuleInit() {
-    const url = process.env.MONGO_URL || 'mongodb://localhost:27017/saas';
+    const url = this.cfg.MONGO_URL || 'mongodb://localhost:27017/saas';
     this.client = new MongoClient(url);
     await this.client.connect();
   }

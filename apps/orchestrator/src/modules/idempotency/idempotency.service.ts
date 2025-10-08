@@ -1,12 +1,16 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { CONFIG, ConfigToken, OrchestratorConfig } from '@saas/shared-config';
 import Redis from 'ioredis';
 
 @Injectable()
 export class IdempotencyService implements OnModuleInit, OnModuleDestroy {
   private client!: Redis;
 
+  constructor(@Inject(CONFIG as ConfigToken<OrchestratorConfig>) private readonly cfg: OrchestratorConfig,
+    ) {}
+
   async onModuleInit() {
-    const url = process.env.REDIS_URL ?? 'redis://localhost:6379';
+    const url = this.cfg.REDIS_URL ?? 'redis://localhost:6379';
     this.client = new Redis(url, { lazyConnect: true });
     await this.client.connect();
   }

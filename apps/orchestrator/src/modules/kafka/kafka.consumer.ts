@@ -1,10 +1,12 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit, Inject, forwardRef } from '@nestjs/common';
-import { createKafka, Topics, BusEnvelope } from '@saas/shared-kafka';
 import { loadEnv } from '@saas/shared-config';
 import { RouterService } from '../router/router.service';
 import type { Consumer, EachMessagePayload } from 'kafkajs';
 import { IdempotencyService } from '../idempotency/idempotency.service';
 import { createHash } from 'crypto';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit, Inject, forwardRef } from '@nestjs/common';
+import { createKafka, Topics, BusEnvelope } from '@saas/shared-kafka';
+import { CONFIG, type ConfigToken } from '@saas/shared-config';
+import type { BaseConfig } from '@saas/shared-config';
 
 @Injectable()
 export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
@@ -14,12 +16,12 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
   constructor(
     @Inject(forwardRef(() => RouterService)) 
     private readonly router: RouterService,
-    private readonly idem: IdempotencyService
+    private readonly idem: IdempotencyService,
+    @Inject(CONFIG as ConfigToken<BaseConfig>) private readonly cfg: BaseConfig,
   ) {}
 
   async onModuleInit() {
-    const { KAFKA_BROKERS } = loadEnv();
-    const kafka = createKafka(KAFKA_BROKERS);
+    const kafka = createKafka(this.cfg.KAFKA_BROKERS);
     const consumer = (this.consumer = kafka.consumer({ groupId: 'orchestrator' }));
     await consumer.connect();
 
@@ -54,7 +56,7 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
       }
     });
 
-    this.logger.log('Kafka consumer started (Outbox + Inventory + Payment + Shipping)');
+    this.logger.log('Kafka consumer started (Outbox  Inventory  Payment  Shipping)');
   }
 
   async onModuleDestroy() {

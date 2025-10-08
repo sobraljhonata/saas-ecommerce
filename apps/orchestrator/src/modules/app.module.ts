@@ -1,9 +1,10 @@
-import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { KafkaModule } from './kafka/kafka.module';
 import { RouterModule } from './router/router.module';
 import { DbModule } from './db/db.module';
 import { IdempotencyModule } from './idempotency/idempotency.module';
+import { Module } from '@nestjs/common';
+import { OrchestratorConfigModule } from './config/config.module';
 
 @Module({
   imports: [
@@ -11,7 +12,8 @@ import { IdempotencyModule } from './idempotency/idempotency.module';
     KafkaModule,
     RouterModule,
     DbModule,
-    IdempotencyModule
-  ],
+    IdempotencyModule,
+    OrchestratorConfigModule
+  ]
 })
-export class AppModule {}
+export class AppModule { }

@@ -1,19 +1,27 @@
 {
   "name": "@saas/shared-config",
   "version": "0.1.0",
-  "type": "commonjs",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "build": "tsc -b",
+    "build": "tsc -p tsconfig.json",
+    "clean": "rimraf dist",
     "dev": "tsc -w -b",
     "lint": "eslint ."
   },
   "dependencies": {
-    "@types/node": "^20.14.10",
+    "dotenv": "^16.6.1",
+    "rimraf": "^6.0.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "typescript": "^5.6.2"
+    "@types/node": "^20.14.10",
+    "typescript": "^5.4.0"
   }
 }
