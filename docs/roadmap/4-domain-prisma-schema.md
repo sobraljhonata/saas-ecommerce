@@ -1,0 +1,1 @@
+# Domain & Prisma Schemas (Catálogo) — entidades Product, Category, migrações, seed.

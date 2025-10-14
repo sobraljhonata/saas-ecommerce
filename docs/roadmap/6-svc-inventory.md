@@ -1,0 +1,1 @@
+# svc-inventory (reserva/baixa) — API + integração com Kafka (eventos de estoque).

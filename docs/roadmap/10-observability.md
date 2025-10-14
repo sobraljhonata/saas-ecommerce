@@ -1,0 +1,1 @@
+# Observability — OpenTelemetry, métricas, dashboards no Grafana/Prometheus.

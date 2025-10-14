@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const CreateProductDto = z.object({
+export const CreateProductSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
   imageUrl: z.string().url().optional(),
@@ -9,4 +9,4 @@ export const CreateProductDto = z.object({
   isBundleOptional: z.boolean().optional().default(false),
   tenantId: z.string().uuid()
 });
-export type CreateProductDto = z.infer<typeof CreateProductDto>;
+export type CreateProductDto = z.infer<typeof CreateProductSchema>;

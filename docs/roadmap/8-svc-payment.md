@@ -1,0 +1,1 @@
+# svc-payment (stub + ACL) — simulação de pagamentos, timeouts, compensações.

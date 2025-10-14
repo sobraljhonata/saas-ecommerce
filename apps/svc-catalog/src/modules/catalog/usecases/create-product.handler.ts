@@ -2,17 +2,10 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { randomUUID } from 'node:crypto';
 import { ProductRepository } from '../product.repository';
 import { OutboxRepository } from '../outbox.repository'
+import type { CreateProductDto } from '../product.dto';
 
 export class CreateProductCommand {
-  constructor(public readonly dto: {
-    name: string;
-    description?: string;
-    imageUrl?: string;
-    price: number;
-    isBundleOptional?: boolean;
-    categoryId: string;
-    tenantId: string;
-  }) {}
+  constructor(public readonly dto: CreateProductDto) {}
 }
 
 @CommandHandler(CreateProductCommand)

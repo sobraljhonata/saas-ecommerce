@@ -1,0 +1,1 @@
+# Segurança — JWT, RBAC, Rate Limiter, CORS, Helmet, secrets management

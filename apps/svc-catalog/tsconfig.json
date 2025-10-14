@@ -1,10 +1,14 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
     "rootDir": "src",
     "outDir": "dist",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true
   },
-  "include": ["src", "test"]
+  "include": ["src", "test"],
+  "exclude": ["node_modules", "test", "dist", "**/*.spec.ts"]
 }

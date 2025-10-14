@@ -1,24 +1,34 @@
 version: "3.9"
 
-# Rodar com:
-# docker compose -f infra/docker-compose.infra.yml -f infra/docker-compose.apps.yml -f infra/docker-compose.e2e.yml run --rm e2e
-
 services:
   e2e:
-    image: python:3.11-slim
-    depends_on:
-      - kafka
-      - mongo
-      - orchestrator
-      - svc-inventory
-      - svc-payment
-      - svc-shipping
+    image: node:20-bullseye
+    container_name: saas-e2e
     working_dir: /e2e
-    volumes:
-      - ./e2e:/e2e:ro   # ← se sua pasta e2e está na raiz do repo
+    depends_on:
+      kafka:
+        condition: service_started
+      mongo:
+        condition: service_started
+      svc-order:
+        condition: service_started
+      orchestrator:
+        condition: service_started
     environment:
-      - E2E_MODE=both
-      - E2E_BROKERS=kafka:9092
-      - E2E_MONGO_URL=mongodb://mongo:27017
-      - E2E_MONGO_DB=orchestrator
+      # ⚠️ Estes valores são para a REDE do compose:
+      KAFKA_BROKERS: "kafka:9092"
+      ORDER_URL: "http://svc-order:3001"
+      MONGO_URL: "mongodb://mongo:27017"
+      MONGO_DB: "orchestrator"
+      # um tenant qualquer para os pedidos de teste:
+      TENANT_ID: "11111111-1111-1111-1111-111111111111"
+      # tempo máximo (segundos) para esperar cada etapa
+      E2E_TIMEOUT: "40"
+    volumes:
+      - ./scripts:/e2e/scripts:ro
+    entrypoint: ["bash", "-lc"]
+    # instala utilitários e executa o script
     command: >
+      apt-get update &&
+      apt-get install -y --no-install-recommends jq kcat curl &&
+      bash scripts/smoke-e2e.sh

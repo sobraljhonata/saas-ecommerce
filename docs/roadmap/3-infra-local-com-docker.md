@@ -1,0 +1,1 @@
+# Infra local com Docker — Postgres, Mongo, Redis, Kafka/Zookeeper, Kafdrop, Prisma Studio, Nginx (gateway).

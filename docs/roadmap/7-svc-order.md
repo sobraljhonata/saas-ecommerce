@@ -1,0 +1,1 @@
+# svc-order (orquestrador da SAGA) — iniciar SAGA, outbox, idempotência, compensações.

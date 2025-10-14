@@ -2,6 +2,7 @@ version: "3.9"
 
 services:
   zookeeper:
+    container_name: zookeeper
     image: confluentinc/cp-zookeeper:7.6.1
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
@@ -13,6 +14,7 @@ services:
       - zookeeper_log:/var/lib/zookeeper/log
 
   kafka:
+    container_name: kafka
     image: confluentinc/cp-kafka:7.6.1
     depends_on:
       - zookeeper
@@ -32,6 +34,7 @@ services:
       - kafka_data:/var/lib/kafka/data
 
   redis:
+    container_name: redis
     image: redis:7-alpine
     command: ["redis-server", "--appendonly", "yes"]
     ports:
@@ -40,6 +43,7 @@ services:
       - redis_data:/data
 
   mongo:
+    container_name: mongo
     image: mongo:6
     ports:
       - "27017:27017"
@@ -47,6 +51,7 @@ services:
       - mongo_data:/data/db
 
   mysql:
+    container_name: mysql
     image: mysql:8.0
     environment:
       - MYSQL_ROOT_PASSWORD=dev
@@ -57,7 +62,13 @@ services:
       - "3306:3306"
     command: ["--default-authentication-plugin=mysql_native_password"]
     volumes:
-      - mysql_data:/var/lib/mysql
+      - mysql_data:/var/lib/mysql\
+      - ./mysql-init:/docker-entrypoint-initdb.d:ro   # 👈 aqui (caminho relativo à pasta infra/)
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
 volumes:
   zookeeper_data:

@@ -1,0 +1,1 @@
+# Monorepo & Workspaces (pnpm) — estrutura de pastas, lint, tsconfig, scripts, conventional commits.

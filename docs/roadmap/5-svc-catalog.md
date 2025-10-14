@@ -1,0 +1,1 @@
+# svc-catalog (HTTP + Swagger + TDD) — repositório, casos de uso, controller, testes.

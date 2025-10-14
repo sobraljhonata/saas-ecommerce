@@ -1,0 +1,1 @@
+# svc-notification — templates, e‑mail/whatsapp (mock), fan‑out a partir de eventos.

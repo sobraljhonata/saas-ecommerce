@@ -5,7 +5,8 @@ version: "3.9"
 
 services:
   topics-init:
-    image: node:20-alpine
+    container_name: topics-init
+    image: node:20-bullseye
     depends_on:
       - kafka
     environment:
@@ -17,6 +18,7 @@ services:
     restart: "no"
 
   prisma-migrate:
+    container_name: prisma_migrate
     build:
       context: ..                           # ← raiz do repo
       dockerfile: infra/Dockerfile.saas-service  # ← caminho relativo ao context
@@ -29,16 +31,22 @@ services:
     restart: "no"
 
   orchestrator:
+    container_name: orchestrator
     build:
       context: ..
       dockerfile: infra/Dockerfile.saas-service
       args: { APP_NAME: orchestrator }
     depends_on:
-      - kafka
-      - mongo
-      - redis
-      - prisma-migrate
-      - topics-init
+      kafka:
+        condition: service_started
+      mongo:
+        condition: service_started
+      redis:
+        condition: service_started
+      prisma-migrate:
+        condition: service_started
+      topics-init:
+        condition: service_started
     environment:
       - NODE_ENV=production
       - KAFKA_BROKERS=kafka:9092
@@ -49,6 +57,44 @@ services:
     # ports:
     #   - "3010:3000"
 
+  svc-catalog:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.saas-service
+      args: { APP_NAME: svc-catalog }
+    depends_on:
+      kafka:
+        condition: service_started
+      mysql:
+        condition: service_started
+      prisma-migrate:
+        condition: service_started
+      topics-init:
+        condition: service_started
+    environment:
+      - NODE_ENV=production
+      - KAFKA_BROKERS=kafka:9092
+      - DATABASE_URL=mysql://app:app@mysql:3306/catalog
+
+  svc-inventory:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.saas-service
+      args: { APP_NAME: svc-inventory }
+    depends_on: 
+      kafka:
+        condition: service_started
+      mysql:
+        condition: service_started
+      prisma-migrate:
+        condition: service_started
+      topics-init:
+        condition: service_started
+    environment:
+      - NODE_ENV=production
+      - KAFKA_BROKERS=kafka:9092
+      - DATABASE_URL=mysql://app:app@mysql:3306/inventory
+
   svc-order:
     build:
       context: ..
@@ -58,29 +104,26 @@ services:
     environment:
       - NODE_ENV=production
       - KAFKA_BROKERS=kafka:9092
-      - DATABASE_URL=mysql://app:_
+      - DATABASE_URL=mysql://app:app@mysql:3306/order
   
-  svc-inventory:
-    build:
-      context: ..
-      dockerfile: infra/Dockerfile.saas-service
-      args: { APP_NAME: svc-inventory }
-    depends_on: [kafka, mysql, prisma-migrate, topics-init]
-    environment:
-      - NODE_ENV=production
-      - KAFKA_BROKERS=kafka:9092
-      - DATABASE_URL=mysql://app:_
-
   svc-payment:
     build:
       context: ..
       dockerfile: infra/Dockerfile.saas-service
       args: { APP_NAME: svc-payment }
-    depends_on: [kafka, mysql, prisma-migrate, topics-init]
+    depends_on: 
+      kafka:
+        condition: service_started
+      mysql:
+        condition: service_started
+      prisma-migrate:
+        condition: service_started
+      topics-init:
+        condition: service_started
     environment:
       - NODE_ENV=production
       - KAFKA_BROKERS=kafka:9092
-      - DATABASE_URL=mysql://app:_
+      - DATABASE_URL=mysql://app:app@mysql:3306/payment
 
   svc-shipping:
     build:
@@ -91,4 +134,4 @@ services:
     environment:
       - NODE_ENV=production
       - KAFKA_BROKERS=kafka:9092
-      - DATABASE_URL=mysql://app:_
+      - DATABASE_URL=mysql://app:app@mysql:3306/shipping

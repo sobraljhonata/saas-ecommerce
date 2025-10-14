@@ -127,7 +127,7 @@ docker compose -f ./infra/docker-compose.infra.yml -f ./infra/docker-compose.app
 docker compose -f ./infra/docker-compose.infra.yml -f ./infra/docker-compose.apps.yml -f ./infra/docker-compose.e2e.yml run --rm e2e
 
 # Só sucesso
-docker compose -f docker-compose.infra.yml -f docker-compose.apps.yml -f docker-compose.e2e.yml \
+docker compose -f ./infra/docker-compose.infra.yml -f ./infra/docker-compose.apps.yml -f ./infra/docker-compose.e2e.yml \
   run --rm -e E2E_MODE=success e2e
 
 # Aumentar timeout por hop
@@ -135,7 +135,7 @@ docker compose -f ./infra/docker-compose.infra.yml -f ./infra/docker-compose.app
   run --rm -e E2E_MODE=both -e E2E_BROKERS=kafka:9092 -e E2E_MONGO_URL=mongodb://mongo:27017 \
   -e E2E_MONGO_DB=orchestrator e2e
 
-docker compose -f docker-compose.infra.yml -f docker-compose.apps.yml logs -f orchestrator svc-payment svc-inventory svc-shipping
+docker compose -f ./infra/docker-compose.infra.yml -f ./infra/docker-compose.apps.yml logs -f orchestrator svc-payment svc-inventory svc-shipping
 
-docker compose -f docker-compose.infra.yml -f docker-compose.apps.yml logs -f orchestrator svc-payment svc-inventory svc-shipping
+docker compose -f ./infra/docker-compose.infra.yml -f ./infra/docker-compose.apps.yml logs -f orchestrator svc-payment svc-inventory svc-shipping
 
